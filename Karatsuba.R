@@ -1,10 +1,15 @@
 
-K_in <- function(n){
-  n <- as.character(n)
-  n <- rev(strsplit(n,"")[[1]])
-  n <- as.integer(n)
 
-  return(n)
+K_in <- function(n){
+  N <- as.character(n)
+  N <- rev(strsplit(N,"")[[1]])
+  if(any(N=="e")){
+    stop("\nInput passed in scientific notation: ",n,
+         "\nType input as a character string to avoid this.")
+  }
+  N <- as.integer(N)
+
+  return(N)
   
 }
 K_out <- function(n){
