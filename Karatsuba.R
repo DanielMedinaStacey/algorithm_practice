@@ -1,36 +1,34 @@
-
-
 K_in <- function(n){
   N <- as.character(n)
   N <- rev(strsplit(N,"")[[1]])
   if(any(N=="e")){
     stop("\nInput passed in scientific notation: ",n,
-         "\nType input as a character string to avoid this.")
-  }
+         "\nType input as a character string to avoid this.")}
   N <- as.integer(N)
-
   return(N)
-  
 }
+
 K_out <- function(n){
   n <- rev(n)
   n <- as.character(n)
   n <- paste(n,collapse = "")
-  
   return(n)
 }
 
 
-K_mult <- function(A,B){
+"%K%" <- function(A,B){
   
+  # Pad shorter vector with leading zeros
   digits <- max(length(A),length(B))
   A <- pad_to(A,digits)
   B <- pad_to(B,digits)
   
-  
-  Y <- rep(0, digits*2)
+  # Base case: product of two single-digit numbers
   if(digits==1){
+    Y <- c(0,0)
     Y[1] <- A * B
+    
+    # Carry from units to tens
     while(Y[1] > 9){
       Y[2] <- Y[2]+1
       Y[1] <- Y[1]-10
@@ -38,58 +36,57 @@ K_mult <- function(A,B){
     return(unpad(Y))
   }
 
+  # Split vectors at midpoint "m" (i.e. log10 of largest number).
+  m <- digits %/% 2
+  # Little ends
+  A0 <- A[1:m]
+  B0 <- B[1:m]
+  # Big ends
+  A1 <- A[-(1:m)]
+  B1 <- B[-(1:m)]
   
-  splitter <- digits %/% 2
-  A_0 <- A[1:splitter]
-  A_1 <- A[-(1:splitter)]
-  B_0 <- B[1:splitter]
-  B_1 <- B[-(1:splitter)]
+ 
+  # Big end and little end products
+  z2 <- A1 %K% B1 
+  z0 <- A0 %K% B0 
+  
+  #Final Karatsuba operation
+  z1 <- (A0 %+% A1) %K% (B0 %+% B1) %-% z2 %-% z0
+
+  # Shift z2 and z1 by "00" * m
+  z2 <- K_shift(z2,2*m)
+  z1 <- K_shift(z1,m)
+  
+ 
   
  
 
-  z2 <- K_mult(A_1,B_1)
-  z0 <- K_mult(A_0,B_0)
-  zA <- K_add(A_0,A_1)
-  zB <- K_add(B_0,B_1)
+  #z1 <- pad_to(z1,digits*2)
+  #z2 <- pad_to(z2,digits*2)
+  #z0 <- pad_to(z0,digits*2)
+  Y <- z2 %+% z1 %+% z0
   
-  zAxB <- K_mult(zA,zB)
-  
-  zSub <- K_add(z2,z0)
-  
-  
-  z1 <- K_sub(zAxB,zSub)
-
-  
-  z2 <- c(rep(c(0,0),splitter),z2)
-  z0 <- c(z0)
-  z1 <- c(rep(c(0),splitter),z1)
-  
- 
-
-  z1 <- pad_to(z1,digits*2)
-  z2 <- pad_to(z2,digits*2)
-  z0 <- pad_to(z0,digits*2)
-  
-  
-  Y <-K_add(K_add(z2,z1),z0)
+ # Y <-K_add(K_add(z2,z1),z0)
 
 
   return(unpad(Y))
 }
 
 
-K_add<- function(A,B){
+"%+%"<- function(A,B){
     digits <- max(length(A),length(B))
     A <- pad_to(A,digits)
     B <- pad_to(B,digits)
   
   Y <- A+B
+  # Carry tens forward
   while(any(Y>9)){
     carry <- rep(0,length(Y))
     carry[Y>9] <- 1
     Y[Y>9] <- Y[Y>9] - 10
     Y <- c(Y,0)+c(0, carry)
   }
+  # Carry negatives backward
   while(any(Y<0)){
     carry <- rep(0,length(Y))
     carry[Y<0] <- 1
@@ -100,41 +97,10 @@ K_add<- function(A,B){
   return(Y)
 }
 
+"%-%" <- function(A,B){A %+% -B}
 
-K_sub <- function(A,B){
-    digits <- max(length(A),length(B))
-    A <- pad_to(A,digits)
-    B <- pad_to(B,digits)
   
-  polarity <- 1
-  Y <- rep(0,digits)
-  for (i in rev(seq_along(A))){
-    if(A[i]==B[i]){
-      next
-    }
-    if(A[i]>B[i]){
-      Y <- A-B
-      break
-    }
-    if(A[i]<B[i]){
-      Y <- B-A
-      polarity <- -1
-      warning("AAAAAA")
-      break
-    }
-    
-  }
-  
-  while(any(Y<0)){
-    carry <- rep(0,length(Y))
-    carry[Y<0] <- 1
-    Y[Y<0] <- Y[Y<0] + 10
-    Y <- c(Y,0)-c(0, carry)
-  }
-  Y <- polarity*Y
-  
-  return(Y)
-}
+
 
 "%*%" <- function(a,b){
   a <- K_in(a)
@@ -142,7 +108,8 @@ K_sub <- function(A,B){
   digits <- max(length(a),length(b))
   a <- pad_to(a,digits)
   b <- pad_to(b,digits)
-  y <- K_mult(a,b)
+  #y <- K_mult(a,b)
+  y <- a %K% b
   y <- K_out(y)
   return(y)
   
@@ -180,9 +147,8 @@ unpad <- function(M){
   return(M)
 }
 
-DOOT <- function(name,thing){
-  cat(paste(name,K_out(thing),"\n"))
+
+K_shift <- function(N,magnitude){
+  zeros <- rep(0,magnitude)
+  N <- c(zeros,N)
 }
-
-
-
